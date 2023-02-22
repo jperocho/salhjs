@@ -1,6 +1,6 @@
 {
   "name": "salhjs",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A simple function handler for AWS Lambda in JavaScript",
   "repository": "git+https://github.com/jperocho/salhjs",
   "main": "index.js",
@@ -13,7 +13,23 @@
   "keywords": [
     "AWS",
     "Lambda",
-    "function handler"
+    "serverless",
+    "function",
+    "handler",
+    "middleware",
+    "node.js",
+    "javascript",
+    "JS",
+    "AWS Lambda",
+    "simple handler",
+    "function chaining",
+    "error handling",
+    "response handling",
+    "event-driven",
+    "scalable",
+    "flexible",
+    "testable",
+    "Simple AWS Lambda Handler JS"
   ],
   "author": "John Mark Perocho <per.eight@gmail.com>",
   "license": "MIT",
