@@ -1,6 +1,6 @@
 {
   "name": "salhjs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A simple function handler for AWS Lambda in JavaScript",
   "repository": "git+https://github.com/jperocho/salhjs",
   "main": "index.js",
