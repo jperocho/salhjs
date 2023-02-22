@@ -1,0 +1,23 @@
+{
+  "name": "salhjs",
+  "version": "1.0.0",
+  "description": "A simple function handler for AWS Lambda in JavaScript",
+  "repository": "git+https://github.com/jperocho/simple-handler.git",
+  "main": "index.js",
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "test": "mocha"
+  },
+  "keywords": [
+    "AWS",
+    "Lambda",
+    "function handler"
+  ],
+  "author": "John Mark Perocho <per.eight@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "mocha": "^10.2.0"
+  }
+}
