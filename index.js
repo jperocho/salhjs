@@ -1,123 +1,133 @@
 /**
- * Simple Handler - A Simple Function Handler for AWS Lambda in JavaScript
+ * SALHJS - Simple AWS Lambda Handler (with Middleware)
  *
  * @description
- * This is a simple function handler designed for use with AWS Lambda in JavaScript. It provides a convenient way to execute
- * a series of functions with a common data object and handle errors and responses in a consistent way. The Handler class is
- * designed to be easy to use and customizable, making it a great choice for developers who need a flexible and reliable function
- * handler for their AWS Lambda functions.
+ * A lightweight function handler for AWS Lambda using a middleware pattern.
+ * It executes a series of functions, passing a shared data object,
+ * and provides consistent error handling and response formatting.
  *
  * @license MIT
  * @author John Mark Perocho
  * @email per.eight@gmail.com
- * 
- * @param {Object} event - The event object passed to the Lambda function.
- * @param {Object} context - The context object passed to the Lambda function.
  */
-function SimpleHandler(event, context) {
-  // Set the event and context properties of the SimpleHandler instance.
-  this.event = event;
-  this.context = context;
+class SimpleHandler {
+	/**
+   * Creates an instance of SimpleHandler.
+   * @param {Object} event - The event object passed to the Lambda function.
+   * @param {Object} context - The context object passed to the Lambda function.
+   */
+	constructor (event, context) {
+		this.event = event;
+		this.context = context;
+		// Initial data passed to the first function
+		this.initialData = { event, context };
+	}
+
+	/**
+   * Executes a sequence of middleware functions.
+   * @param {...Function} funcs - The middleware functions to execute in order.
+   * Each function should have the signature: (data, next) => void
+   *   - data: Object containing event, context, and accumulated data.
+   *   - next: Function callback (err, updatedData) => void. Call next() or next(null, data) to continue, next(err) to stop with error.
+   * @returns {Promise<Object>} Resolves with { status, data } on success.
+   * @rejects {Promise<Object>} Rejects with { status, data: { message, func } } on error.
+   */
+	async handleRequest (...funcs) {
+		let currentData = { ...this.initialData }; // Start with initial event/context
+
+		for (const func of funcs) {
+			const funcName = func.name || 'anonymous function';
+			console.log(`Calling function: ${funcName}`);
+			currentData.currentFunc = funcName; // Track current function for error reporting
+
+			try {
+				// Wrap the function call in a promise to handle both sync/async and callback patterns
+				currentData = await new Promise((resolve, reject) => {
+					// Execute the middleware function
+					const maybePromise = func(currentData, (error, nextData) => {
+						if (error) {
+							// Attach function name to the error if not already present
+							if (!error.func) {
+								error.func = funcName;
+							}
+							return reject(error); // Error passed to next()
+						}
+						// Resolve with updated data if provided, otherwise use existing data
+						resolve(nextData || currentData);
+					});
+
+					// Handle cases where the function itself returns a promise (less common with 'next' pattern)
+					// This primarily catches synchronous throws or unhandled promise rejections within 'func'
+					if (maybePromise instanceof Promise) {
+						maybePromise.catch(err => {
+							if (!err.func) {
+								err.func = funcName;
+							}
+							reject(err);
+						});
+					}
+
+				});
+			} catch (error) {
+				// Catch errors from next(err) or synchronous throws
+				console.error(`Error caught in function "${error.func || funcName}":`, error.message || error);
+				return this.handleError(error, currentData, funcName); // Format and return error immediately
+			}
+		}
+
+		// If all functions executed successfully
+		return this.handleSuccess(currentData);
+	}
+
+	/**
+   * Formats a success response.
+   * Removes internal properties like 'event', 'context', 'currentFunc' from the final data payload.
+   * @param {Object} data - The final accumulated data object.
+   * @returns {Object} Formatted success response { status: 200, data: Object }.
+   */
+	handleSuccess (data) {
+		// Clone data and remove handler-specific properties for the final response body
+		const responseData = { ...data };
+		delete responseData.event;
+		delete responseData.context;
+		delete responseData.currentFunc; // Remove internal tracking property
+		return { status: 200, data: responseData };
+	}
+
+	/**
+   * Formats an error response.
+   * Rejects the promise chain with a standardized error object.
+   * @param {Error | Object} error - The error object caught. Can have `status` and `message`.
+   * @param {Object} data - The data object at the time of the error.
+   * @param {string} funcName - The name of the function that caused the error.
+   * @returns {Promise<Object>} A rejected promise with { status, data: { message, func } }.
+   */
+	handleError (error, data, funcName) {
+		// Determine status code: use error.status, or default to 500
+		const status = typeof error.status === 'number' ? error.status : 500;
+
+		// Determine error message
+		const message = error.message || 'An unexpected error occurred.';
+
+		// Identify the function where the error originated
+		const errorFunc = error.func || funcName || data?.currentFunc || 'unknown function';
+
+		console.error(`Error in function "${errorFunc}" (Status: ${status}): ${message}`);
+
+		const errorResponse = {
+			status,
+			data: {
+				message: message,
+				func: errorFunc, // Function where error was detected/thrown
+			},
+		};
+		// Instead of returning, we reject the promise chain as indicated in handleRequest JSDoc
+		// This allows catching it outside handler.handleRequest
+		// Note: The try/catch in handleRequest already catches this and returns it.
+		// For clarity and adherence to typical Promise rejection patterns, we throw.
+		// The caller should use try/catch around handler.handleRequest.
+		throw errorResponse;
+	}
 }
-
-/**
- * handleRequest - Handles a series of functions and returns the response data.
- *
- * @param {...Function} funcs - The functions to be executed in order.
- * @returns {Promise} A Promise that resolves with the response data or rejects with an error.
- */
-SimpleHandler.prototype.handleRequest = function (...funcs) {
-  // Call the first function in the series with the event, context, and function name data.
-  return this.callFunction(funcs[0], { event: this.event, context: this.context, currentFunc: funcs[0].name })
-    // Call the remaining functions in the series with the data from the previous function.
-    .then(data => this.nextFunction(funcs.slice(1), data))
-    // Handle the successful response by returning an object with a status code and the response data.
-    .then(this.handleSuccess)
-    // Handle errors by returning an object with a status code and the error data.
-    .catch(this.handleError);
-};
-
-/**
- * callFunction - Calls a function with the specified data and returns a Promise that resolves with the updated data.
- *
- * @param {Function} func - The function to be called.
- * @param {Object} data - The data to be passed to the function.
- * @returns {Promise} A Promise that resolves with the updated data or rejects with an error.
- */
-SimpleHandler.prototype.callFunction = function (func, data) {
-  // Get the function name or set it to "anonymous function".
-  const { name: funcName = 'anonymous function' } = func;
-  // Log a message indicating that the function is being called.
-  console.log(`Calling function ${funcName}`);
-  // Call the function with the data and return a Promise that resolves with the updated data or rejects with an error.
-  return new Promise((resolve, reject) => {
-    func(data, (error, newData) => {
-      if (error) {
-        // If the function call resulted in an error, reject the Promise with an error object that includes the error and the current function name.
-        return reject({ ...error, data: { ...data, currentFunc: funcName } });
-      }
-
-      // If the function call was successful, resolve the Promise with the updated data or the original data if no new data was returned.
-      return resolve(newData || data);
-    });
-  });
-};
-
-/**
- * nextFunction - Calls the next function in the chain of functions and passes the updated data to it.
- *
- * @param {Array<Function>} funcs - The remaining functions to be called.
- * @param {Object} data - The current data object.
- * @returns {Promise} A Promise that resolves with the updated data when all functions have been called.
- */
-SimpleHandler.prototype.nextFunction = function (funcs, data) {
-  // If there are no more functions in the chain, return a Promise that resolves with the data.
-  if (funcs.length === 0) {
-    return Promise.resolve(data);
-  }
-
-  // Call the next function in the chain with the updated data and move on to the next function.
-  const [nextFunc, ...remainingFuncs] = funcs;
-
-   // Get the next function name or set it to "anonymous function".
-  const { name: nextFuncName = 'anonymous function' } = nextFunc;
-
-  // If a function name is provided, use it as the name of the current function; otherwise, default to 'anonymous function'.
-  return this.callFunction(nextFunc, { ...data, currentFunc: nextFuncName })
-    // Recursively call this function with the remaining functions in the chain and the updated data from the current function.
-    .then(nextData => this.nextFunction(remainingFuncs, nextData));
-};
-
-/**
- * Formats a success response with a status code and the provided data.
- * @param {Object} data - The response data.
- * @returns {Object} An object with a status code and the response data.
- */
-SimpleHandler.prototype.handleSuccess = function (data) {
-  return { status: 200, data };
-};
-
-/**
- * Formats an error response with a status code and a message indicating which function caused the error.
- * @param {Object} error - The error object, which includes a message, status code, and current function name.
- * @returns {Object} An object with a status code and the error data.
- */
-SimpleHandler.prototype.handleError = function (error) {
-  const { data: { currentFunc, message = 'Something went wrong' }, status = 500 } = error;
-  console.error(`Error in function ${currentFunc}: ${message}`);
-  const response = { message, func: currentFunc };
-  return { status, data: response };
-};
-
-/**
- * Sets the response data and returns an object with a status code and the provided data.
- * @param {number} status - The HTTP status code for the response.
- * @param {Object} data - The response data.
- * @returns {Object} An object with a status code and the response data.
- */
-SimpleHandler.prototype.response = function (status, data) {
-  this.responseData = { ...data };
-  return { status, data };
-};
 
 module.exports = SimpleHandler;
