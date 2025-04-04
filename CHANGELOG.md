@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.0.1] - 2025-04-04
+### Added
+- Modified handleSuccess responseData
+
 ## [2.0.0] - 2025-04-04
 ### Added
 - Modified from prototype to class and improved Logic

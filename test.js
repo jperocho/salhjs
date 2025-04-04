@@ -58,16 +58,14 @@ describe('SimpleHandler', () => {
 			assert.fail(`Should not have thrown error: ${e.message}`);
 		}
 
-
-		assert.strictEqual(result.status, 200);
-		assert.deepStrictEqual(result.data, {
+		assert.deepStrictEqual(result, {
 			func1: 'Data from func1',
 			func2: 'Data from func2',
 			func3: 'Data from func3',
 		});
 		// Ensure original event/context are NOT in the final data
-		assert.strictEqual(result.data.event, undefined);
-		assert.strictEqual(result.data.context, undefined);
+		assert.strictEqual(result.event, undefined);
+		assert.strictEqual(result.context, undefined);
 	});
 
 	it('should handle anonymous functions', async () => {
@@ -78,9 +76,7 @@ describe('SimpleHandler', () => {
 		} catch(e) {
 			assert.fail(`Should not have thrown error: ${e.message}`);
 		}
-
-		assert.strictEqual(result.status, 200);
-		assert.deepStrictEqual(result.data, {
+		assert.deepStrictEqual(result, {
 			func1: 'Data from func1',
 			anon: true,
 		});
@@ -138,8 +134,7 @@ describe('SimpleHandler', () => {
 			assert.fail(`Should not have thrown error: ${e.message}`);
 		}
 
-		assert.strictEqual(result.status, 200);
-		assert.deepStrictEqual(result.data, {}); // No data added
+		assert.deepStrictEqual(result, {}); // No data added
 	});
 
 	it('should pass original event and context to functions', async () => {
@@ -157,8 +152,7 @@ describe('SimpleHandler', () => {
 			assert.fail(`Should not have thrown error: ${e.message}`);
 		}
 
-		assert.strictEqual(result.status, 200);
-		assert.deepStrictEqual(result.data, { checked: true });
+		assert.deepStrictEqual(result, { checked: true });
 	});
 
 });

@@ -91,7 +91,7 @@ class SimpleHandler {
 		delete responseData.event;
 		delete responseData.context;
 		delete responseData.currentFunc; // Remove internal tracking property
-		return { status: 200, data: responseData };
+		return responseData;
 	}
 
 	/**
