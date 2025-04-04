@@ -1,6 +1,6 @@
 {
   "name": "salhjs",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "A simple function handler for AWS Lambda in JavaScript",
   "repository": "git+https://github.com/jperocho/salhjs",
   "main": "index.js",
@@ -34,6 +34,10 @@
   "author": "John Mark Perocho <per.eight@gmail.com>",
   "license": "MIT",
   "devDependencies": {
-    "mocha": "^10.2.0"
+    "eslint": "^9.23.0",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-plugin-prettier": "^5.2.6",
+    "mocha": "^11.1.0",
+    "prettier": "^3.5.3"
   }
 }
